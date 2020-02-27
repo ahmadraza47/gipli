@@ -10,7 +10,7 @@
     "description": """
 
                     """,
-    "version":"13.0.1",
+    "version":"13.0.2",
     "depends" : ["base","sale_management","account"],
     "application" : True,
     "data" : [

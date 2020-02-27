@@ -9,12 +9,10 @@ class ShAccountMoveLine(models.Model):
     
     
     @api.onchange('product_id')
-    def _onchange_product_id(self):
-        res = super(ShAccountMoveLine, self)._onchange_product_id()
+    def _onchange_product_id_custom(self):
         if self:
             for rec in self:
                 rec.sh_retail_price = rec.product_id.sh_retail_price
-        return res
     
 
 class ShAccountMove(models.Model):
