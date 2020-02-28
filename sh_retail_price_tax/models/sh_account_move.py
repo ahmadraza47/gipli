@@ -18,10 +18,8 @@ class ShAccountMoveLine(models.Model):
 class ShAccountMove(models.Model):
     _inherit='account.move'
     
-
-    def _recompute_tax_lines(self):
+    def _recompute_tax_lines(self, recompute_tax_base_amount=False):
         ''' Compute the dynamic tax lines of the journal entry.
-
         :param lines_map: The line_ids dispatched by type containing:
             * base_lines: The lines having a tax_ids set.
             * tax_lines: The lines having a tax_line_id set.
@@ -46,7 +44,8 @@ class ShAccountMove(models.Model):
             :return:            The result of the compute_all method.
             '''
             move = base_line.move_id
-            if move.is_invoice():
+
+            if move.is_invoice(include_receipts=True):
                 sign = -1 if move.is_inbound() else 1
                 quantity = base_line.quantity
                 if base_line.currency_id:
@@ -93,16 +92,23 @@ class ShAccountMove(models.Model):
         taxes_map = {}
 
         # ==== Add tax lines ====
+        to_remove = self.env['account.move.line']
         for line in self.line_ids.filtered('tax_repartition_line_id'):
             grouping_dict = self._get_tax_grouping_key_from_tax_line(line)
             grouping_key = _serialize_tax_grouping_key(grouping_dict)
-            taxes_map[grouping_key] = {
-                'tax_line': line,
-                'balance': 0.0,
-                'amount_currency': 0.0,
-                'tax_base_amount': 0.0,
-                'grouping_dict': False,
-            }
+            if grouping_key in taxes_map:
+                # A line with the same key does already exist, we only need one
+                # to modify it; we have to drop this one.
+                to_remove += line
+            else:
+                taxes_map[grouping_key] = {
+                    'tax_line': line,
+                    'balance': 0.0,
+                    'amount_currency': 0.0,
+                    'tax_base_amount': 0.0,
+                    'grouping_dict': False,
+                }
+        self.line_ids -= to_remove
 
         # ==== Mount base lines ====
         for line in self.line_ids.filtered(lambda line: not line.exclude_from_invoice_tab):
@@ -151,6 +157,8 @@ class ShAccountMove(models.Model):
 
             if not tax_line and not taxes_map_entry['grouping_dict']:
                 continue
+            elif tax_line and recompute_tax_base_amount:
+                tax_line.tax_base_amount = tax_base_amount
             elif tax_line and not taxes_map_entry['grouping_dict']:
                 # The tax line is no longer used, drop it.
                 self.line_ids -= tax_line
@@ -186,6 +194,5 @@ class ShAccountMove(models.Model):
             if in_draft_mode:
                 tax_line._onchange_amount_currency()
                 tax_line._onchange_balance()
-
-
-
+    
+ 
