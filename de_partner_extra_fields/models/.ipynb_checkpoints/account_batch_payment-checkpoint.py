@@ -7,8 +7,7 @@ from odoo.exceptions import UserError, ValidationError, Warning
 
 from odoo.addons import decimal_precision as dp
 
-class ResPartner(models.Model):
-    _inherit = 'res.partner'
+class AccountBatchPayment(models.Model):
+    _inherit = 'account.batch.payment'
     
-    ntn = fields.Char(string='NTN', help="The National Tax Number.")
-    nic = fields.Char(string='NIC', help="The National Identity Card Number.")
+    city_id = fields.Many2one('res.city', string='City')
